@@ -1,38 +1,11 @@
-doctype 5
-html
-    head
-        title A book of Music
-        link(rel='stylesheet', href='/bootstrap/css/bootstrap.min.css')
-        script(src='/jquery-1.9.1.min.js', type='text/javascript')
-        script(src='/bootstrap/js/bootstrap.js', type='text/javascript')
-        style(type="text/css")
-            #footer {
-                position:fixed;
-                left:0px;
-                bottom:0px;
-                height:75px;
-                border-top: 2px solid #999;
-                padding-top: 5px;
-                width:100%;
-                background:#000;
-                color: #999;
-            }
-    body
-        .container
-            .page-header(style="text-align:center;")
-                h1 A book of music&nbsp;
-                    small by&nbsp;
-                        a(href="https://github.com/xhochy",target="_blank") xhochy
-            .about(style="text-align: center") 
-                i Make music in artist biographies in ebooks playable
+extends layout
+
+block content
+    .container
+        .page-header
+            h1 A Book of Music
+        p.lead Generate eBooks that are able to play the music that is mentioned in their text on your computer while enjoying them on your favorite eBook-Reader.
+        p (Twitter login is used to uniquely identify users. We are not utilising Twitter data.)
         .center(style="position:absolute; top: 50%; left:50%; margin: -14px 0 0 -79px")
             a(href="/auth/twitter")
                 img(src="/img/sign-in-with-twitter-gray.png")
-
-         #footer(style="width:100%;text-align: center;font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;")
-             .text(style="margin: 0 auto;")
-                 b(style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif") This music hack make use of <a href="http://toma.hk">toma.hk</a> and <a href="http://wikipedia.org">Wikipedia</a>.
-                 br
-                 a(href="http://www.tomahawk-player.org/")
-                     img(src="http://toma.hk/img/gettomahawk.png")
-             

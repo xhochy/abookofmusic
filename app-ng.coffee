@@ -15,6 +15,7 @@ fs = require('fs')
 archiver = require('archiver')
 TwitterStrategy = require('passport-twitter').Strategy
 StringReader = require './stringreader.js'
+passportSocketIo = require("passport.socketio")
 
 # Automatically track and cleanup files at exit
 temp.track()
@@ -36,6 +37,8 @@ passport.deserializeUser (json, done) ->
 
 # ** EXPRESS **
 app = express()
+server = require('http').createServer(app)
+io = require('socket.io').listen(server)
 app.use express.cookieParser()
 app.use express.bodyParser()
 app.use express.session({ secret: conf.sessionSecret })
@@ -69,7 +72,11 @@ ensureAuth = (req, res, next) ->
 
 app.get '/front', ensureAuth, (req, res) ->
     username = req.user.profile.username
-    res.render 'front', username: username
+    shasum = crypto.createHash('sha1')
+    shasum.update(username)
+    shasum.update('boohbooh')
+    userkey = username + '%20' + shasum.digest('hex')
+    res.render 'front', username: username, userkey: userkey
 
 app.post '/renderbook', ensureAuth, (req, res) ->
     page = req.body.name
@@ -77,7 +84,7 @@ app.post '/renderbook', ensureAuth, (req, res) ->
     shasum = crypto.createHash('sha1')
     shasum.update(username)
     shasum.update('boohbooh')
-    userkey = username + '##' + shasum.digest('hex')
+    userkey = username + '%20' + shasum.digest('hex')
     temp.mkdir 'abookofmusic-', (err, dirpath) ->
         bookpath = path.join(dirpath, 'book.epub')
         fs.mkdirSync(path.join(dirpath, 'book'))
@@ -106,20 +113,38 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                                 # console.log(elem)
                                 if elem.attribs? && elem.attribs.title == 'Wannabe (song)'
                                     console.log('WannaYeah')
-                                    doc(elem).html('<a href="http://xhochy.com:5000/playsong?key=' + userkey + 'title=Wannabe&artist=Spice%20Girls">' +  doc(elem).text() + ' (&#9654;)</a>')
+                                    doc(elem).html('<a href="http://xhochy.com:5000/playsong?key=' + userkey + '&title=Wannabe&artist=Spice%20Girls">' +  doc(elem).text() + ' (&#9654;)</a>')
                                     console.log(doc(elem).html())
                             output = doc.html()
+                        console.log("done with this doc")
+                        entry.autodrain()
                         fs.writeFile path.join(dirpath, 'book', entry.path), output, (err) ->
-                            console.log(err)
-                            entry.autodrain()
+                            if err? 
+                                console.log(err)
+                            else
+                                console.log("no err for " + entry.path)
                 ).on 'close', ->
                     console.log("closing..")
-                    proc = spawn('zip', ['-r', 'book.epub', '.'], cwd: path.join(dirpath, 'book'))
-                    proc.on 'close', (code) ->
-                        res.download( path.join(dirpath, 'book', 'book.epub'), 'book.epub')
+                    setTimeout( ->
+                        proc = spawn('zip', ['-r', 'book.epub', '.'], cwd: path.join(dirpath, 'book'))
+                        proc.on 'close', (code) ->
+                            res.download( path.join(dirpath, 'book', 'book.epub'), 'book.epub')
+                    , 2000)
 
+app.get '/playsong', (req, res) ->
+    console.log(req.query.key)
+    if sockets[req.query.key]?
+        sockets[req.query.key].emit('playsong', title: req.query.title, artist: req.query.artist)
+
+sockets = {}
+io.sockets.on 'connection', (socket) ->
+    socket.on 'register', (data) ->
+        console.log(decodeURIComponent(data.key))
+        sockets[decodeURIComponent(data.key)] = socket
+    socket.on 'disconnect', ->
+        # todo remove from sockest
 
 port = process.env.PORT || 5000
-app.listen port, ->
+server.listen port, ->
     console.log "Listening on " + port
 

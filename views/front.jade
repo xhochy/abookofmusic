@@ -1,10 +1,44 @@
 extends layout
 
 block content
-    h2 Hello #{username}
+    script(src="/socket.io/socket.io.js")
+    script.
+        var track = {}
+        var socket = io.connect('http://xhochy.com:5000');
+        socket.emit('register', { key: '#{userkey}' });
+        socket.on('playsong', function (data) { 
+            track = window.tomahkAPI.Track(data.title, data.artist, {
+                height: 300, width: 300, disabledResolvers: ['rdio'],
+                    handlers: {
+                        onloaded: function() {},
+                        onended: function() {},
+                        onplayable: function() { track.play(); },
+                        onresolved: function(resolver, result) {},
+                        ontimeupdate: function(timeupdate) {}
+                    }
+            });
+            $('#player').empty();
+            $('#player').append(track.render());
+        });
 
-    h3 Enter a book name: bla
+    .container
+        .page-header
+            h1 A Book of Music
+        p.lead Hello #{username}, either generate a new book or relax and listen to some music out of your existing books.
+        p
+            | To create a new book, just enter the name of Wikipedia Page below and wait a minute for the book to be printed
+            | and personalise (remark: The resulting book is just for you and always triggers plays in your account).
 
-    form(action="/renderbook",method="post")
-        input(type="text",name="name")
-        input(type="submit")
+        .panel.panel-default
+            .panel-body
+                form(role="form-inline",method="post",action="/renderbook")
+                    .form-group
+                         label.sr-only(for="pagetitle") Page title
+                         input.form-control#pagetitle(type="email",name="pagetitle",placeholder="Enter page title")
+                    button.btn.btn-default(type="submit") Generate ePUB
+        .panel.panel-info
+            .panel-heading
+                h3.panel-title Player
+            .panel-body(style="margin:auto")
+                .player(id='player')
+                    span.label.label-primary Songs will be appear here

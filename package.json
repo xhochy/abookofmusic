@@ -17,6 +17,8 @@
     "archiver": ">=0.x.x",
     "pullstream": "~0.4.x",
     "temp": "0.x.x",
-    "glob": "~3.2.x"
+    "glob": "~3.2.x",
+    "passport.socketio": "~2.2.0",
+    "socket.io": "~0.9.16"
   }
 }
