@@ -5,11 +5,18 @@
   "private": true,
   "dependencies": {
     "express": "3.x",
+    "cheerio": "0.x.x",
     "passport": "~0.1.x",
     "passport-twitter": "~1.x.x",
     "jade": "~0.x.x",
     "underscore": "~1.4.x",
     "async": "~0.2.x",
+    "unzip": "~0.1.x",
+    "adm-zip": "~0.4.x",
+    "zipstream": "0.2.x",
+    "archiver": ">=0.x.x",
+    "pullstream": "~0.4.x",
+    "temp": "0.x.x",
     "glob": "~3.2.x"
   }
 }

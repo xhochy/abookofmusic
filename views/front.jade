@@ -1,0 +1,10 @@
+extends layout
+
+block content
+    h2 Hello #{username}
+
+    h3 Enter a book name: bla
+
+    form(action="/renderbook",method="post")
+        input(type="text",name="name")
+        input(type="submit")
