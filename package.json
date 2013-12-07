@@ -1,0 +1,15 @@
+{
+  "name": "abookofmusic",
+  "description": "Make music in artist biographies in ebooks playable",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "express": "3.x",
+    "passport": "~0.1.x",
+    "passport-twitter": "~1.x.x",
+    "jade": "~0.x.x",
+    "underscore": "~1.4.x",
+    "async": "~0.2.x",
+    "glob": "~3.2.x"
+  }
+}
