@@ -134,6 +134,7 @@ app.get '/playsong', (req, res) ->
         sockets[decodeURIComponent(req.query.key)].emit('playsong', title: req.query.title, artist: req.query.artist)
     else
         console.log("No matching socket found for " + req.query.key)
+    res.render 'playsong'
 
 sockets = {}
 io.sockets.on 'connection', (socket) ->
