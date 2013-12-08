@@ -16,6 +16,7 @@ archiver = require('archiver')
 TwitterStrategy = require('passport-twitter').Strategy
 StringReader = require './stringreader.js'
 passportSocketIo = require("passport.socketio")
+MongoClient = require('mongodb').MongoClient
 
 # Automatically track and cleanup files at exit
 temp.track()
@@ -79,7 +80,7 @@ app.get '/front', ensureAuth, (req, res) ->
     res.render 'front', username: username, userkey: userkey
 
 app.post '/renderbook', ensureAuth, (req, res) ->
-    page = req.body.name
+    page = req.body.pagetitle
     username = req.user.profile.username
     shasum = crypto.createHash('sha1')
     shasum.update(username)
@@ -91,7 +92,7 @@ app.post '/renderbook', ensureAuth, (req, res) ->
         fs.mkdirSync(path.join(dirpath, 'book', 'META-INF'))
         fs.mkdirSync(path.join(dirpath, 'book', 'OPS'))
         fs.mkdirSync(path.join(dirpath, 'book', 'OPS', 'images'))
-        renderer = spawn('mw-render', ['--conf', ':en', '--output', bookpath, '--writer', 'epub', 'Spice Girls'])
+        renderer = spawn('mw-render', ['--conf', ':en', '--output', bookpath, '--writer', 'epub', page])
         newfiles = {}
         renderer.on 'close', (code) ->
             if code != 0
@@ -107,34 +108,32 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                     ps.pull (err, data) ->
                         output = data
                         if entry.path.match(/\.xhtml/)
-                            # Parse data with cheerio
-                            doc = cheerio.load(output)
-                            doc("span").each (i, elem) ->
-                                # console.log(elem)
-                                if elem.attribs? && elem.attribs.title == 'Wannabe (song)'
-                                    console.log('WannaYeah')
-                                    doc(elem).html('<a href="http://xhochy.com:5000/playsong?key=' + userkey + '&title=Wannabe&artist=Spice%20Girls">' +  doc(elem).text() + ' (&#9654;)</a>')
-                                    console.log(doc(elem).html())
-                            output = doc.html()
-                        console.log("done with this doc")
-                        entry.autodrain()
-                        fs.writeFile path.join(dirpath, 'book', entry.path), output, (err) ->
-                            if err? 
-                                console.log(err)
-                            else
-                                console.log("no err for " + entry.path)
+                            output = updateSongLinks output, userkey, (out) ->
+                                entry.autodrain()
+                                fs.writeFile path.join(dirpath, 'book', entry.path), out, (err) ->
+                                    if err?
+                                        console.log(err)
+                        else
+                            entry.autodrain()
+                            fs.writeFile path.join(dirpath, 'book', entry.path), output, (err) ->
+                                if err?
+                                    console.log(err)
                 ).on 'close', ->
                     console.log("closing..")
                     setTimeout( ->
                         proc = spawn('zip', ['-r', 'book.epub', '.'], cwd: path.join(dirpath, 'book'))
                         proc.on 'close', (code) ->
                             res.download( path.join(dirpath, 'book', 'book.epub'), 'book.epub')
-                    , 2000)
+                    , 20000)
 
 app.get '/playsong', (req, res) ->
     console.log(req.query.key)
     if sockets[req.query.key]?
         sockets[req.query.key].emit('playsong', title: req.query.title, artist: req.query.artist)
+    else if sockets[decodeURIComponent(req.query.key)]?
+        sockets[decodeURIComponent(req.query.key)].emit('playsong', title: req.query.title, artist: req.query.artist)
+    else
+        console.log("No matching socket found for " + req.query.key)
 
 sockets = {}
 io.sockets.on 'connection', (socket) ->
@@ -143,6 +142,36 @@ io.sockets.on 'connection', (socket) ->
         sockets[decodeURIComponent(data.key)] = socket
     socket.on 'disconnect', ->
         # todo remove from sockest
+
+mongodb = {}
+song_coll = {}
+MongoClient.connect 'mongodb://127.0.0.1:27017/abookofmusic', (err, db) ->
+    if err?
+        console.log(err)
+    else
+        mongodb = db
+        song_coll = db.collection('songs')
+
+updateSongElem = (userkey, doc, elem, cb) ->
+    console.log(elem)
+    song_coll.findOne title: elem.attribs.title.toString(), (err, result) ->
+        if err?
+            console.log(err)
+        if result?
+            doc(elem).html('<a href="http://xhochy.com:5000/playsong?key=' + encodeURIComponent(userkey) + '&title=' + encodeURIComponent(result.real_title) + '&artist=' + encodeURIComponent(result.artist) + '">' +  doc(elem).text() + ' (&#9654;)</a>')
+        cb(null, doc)
+
+updateSongLinks = (output, userkey, cb) ->
+    # Parse data with cheerio
+    doc = cheerio.load(output)
+    elems = []
+    doc("span").each (i, elem) ->
+        if elem.attribs? && elem.attribs.title?
+            console.log(elem.attribs.title)
+            elems.push(elem)
+    iter = _.partial(updateSongElem, userkey)
+    async.reduce elems, doc, iter, (err, doc) ->
+        cb(doc.html())
 
 port = process.env.PORT || 5000
 server.listen port, ->
