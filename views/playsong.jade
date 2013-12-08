@@ -1,7 +1,16 @@
 extends layout
 
 block content
+    script.
+        $(document).ready(function () {
+            $("#stop").click(function () {
+                $.get("/stop?key=" + encodeURIComponent("#{userkey}"));
+            });
+            });
+        
     .container
         .page-header
             h1 Playing
+
+        button.btn.btn-danger#stop(style="font-size: 100px;border-radius:10px;padding:100px;margin:100px") STOP
 

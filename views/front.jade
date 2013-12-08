@@ -4,7 +4,7 @@ block content
     script(src="/socket.io/socket.io.js")
     script.
         var track = {}
-        var socket = io.connect('http://xhochy.com:5000');
+        var socket = io.connect('#{playhost}');
         socket.emit('register', { key: '#{userkey}' });
         socket.on('playsong', function (data) { 
             track = window.tomahkAPI.Track(data.title, data.artist, {
@@ -20,13 +20,16 @@ block content
             $('#player').empty();
             $('#player').append(track.render());
         });
+        socket.on('stop', function () {
+            track.pause();
+        });
 
     .container
         .page-header
             h1 A Book of Music
         p.lead Hello #{username}, either generate a new book or relax and listen to some music out of your existing books.
         p
-            | To create a new book, just enter the name of Wikipedia Page below and wait a minute for the book to be printed
+            | To create a new book, just enter the name of Wikipedia Page below and some minutes for the book to be printed
             | and personalise (remark: The resulting book is just for you and always triggers plays in your account).
 
         .panel.panel-default
@@ -36,6 +39,8 @@ block content
                          label.sr-only(for="pagetitle") Page title
                          input.form-control#pagetitle(type="text",name="pagetitle",placeholder="Enter page title")
                     button.btn.btn-default(type="submit") Generate ePUB
+                    p#help-block 
+                         i As book retrieval is very slow, it may take upto ten minutes to generate. Please be patient.
         .panel.panel-info
             .panel-heading
                 h3.panel-title Player

@@ -40,7 +40,7 @@ passport.deserializeUser (json, done) ->
 app = express()
 server = require('http').createServer(app)
 io = require('socket.io').listen(server)
-app.use express.cookieParser()
+app.use express.cookieParser(conf.sessionSecret)
 app.use express.bodyParser()
 app.use express.session({ secret: conf.sessionSecret })
 app.use passport.initialize()
@@ -75,17 +75,18 @@ app.get '/front', ensureAuth, (req, res) ->
     username = req.user.profile.username
     shasum = crypto.createHash('sha1')
     shasum.update(username)
-    shasum.update('boohbooh')
+    shasum.update(conf.sessionSecret)
     userkey = username + '%20' + shasum.digest('hex')
-    res.render 'front', username: username, userkey: userkey
+    res.render 'front', username: username, userkey: userkey, playhost: conf.playhost
 
 app.post '/renderbook', ensureAuth, (req, res) ->
     page = req.body.pagetitle
     username = req.user.profile.username
     shasum = crypto.createHash('sha1')
     shasum.update(username)
-    shasum.update('boohbooh')
+    shasum.update(conf.sessionSecret)
     userkey = username + '%20' + shasum.digest('hex')
+    console.log("Rendering " + page)
     temp.mkdir 'abookofmusic-', (err, dirpath) ->
         bookpath = path.join(dirpath, 'book.epub')
         fs.mkdirSync(path.join(dirpath, 'book'))
@@ -93,6 +94,8 @@ app.post '/renderbook', ensureAuth, (req, res) ->
         fs.mkdirSync(path.join(dirpath, 'book', 'OPS'))
         fs.mkdirSync(path.join(dirpath, 'book', 'OPS', 'images'))
         renderer = spawn('mw-render', ['--conf', ':en', '--output', bookpath, '--writer', 'epub', page])
+        renderer.stdout.pipe(process.stdout)
+
         newfiles = {}
         renderer.on 'close', (code) ->
             if code != 0
@@ -100,6 +103,12 @@ app.post '/renderbook', ensureAuth, (req, res) ->
             else
                 # The epub is created, now read it and add the links
                 console.log(bookpath)
+                setTimeout( ->
+                    console.log("Compressing")
+                    proc = spawn('zip', ['-r', 'book.epub', '.'], cwd: path.join(dirpath, 'book'))
+                    proc.on 'close', (code) ->
+                        res.download( path.join(dirpath, 'book', 'book.epub'), 'book.epub')
+                , 20000)
                 fs.createReadStream(bookpath).pipe(unzip.Parse()).on('entry', (entry) ->
                     console.log("next entry")
                     console.log(entry.path)
@@ -108,8 +117,8 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                     ps.pull (err, data) ->
                         output = data
                         if entry.path.match(/\.xhtml/)
-                            output = updateSongLinks output, userkey, (out) ->
-                                entry.autodrain()
+                            entry.autodrain()
+                            output = updateSongLinks output.toString(), userkey, (out) ->
                                 fs.writeFile path.join(dirpath, 'book', entry.path), out, (err) ->
                                     if err?
                                         console.log(err)
@@ -120,11 +129,6 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                                     console.log(err)
                 ).on 'close', ->
                     console.log("closing..")
-                    setTimeout( ->
-                        proc = spawn('zip', ['-r', 'book.epub', '.'], cwd: path.join(dirpath, 'book'))
-                        proc.on 'close', (code) ->
-                            res.download( path.join(dirpath, 'book', 'book.epub'), 'book.epub')
-                    , 20000)
 
 app.get '/playsong', (req, res) ->
     console.log(req.query.key)
@@ -134,9 +138,20 @@ app.get '/playsong', (req, res) ->
         sockets[decodeURIComponent(req.query.key)].emit('playsong', title: req.query.title, artist: req.query.artist)
     else
         console.log("No matching socket found for " + req.query.key)
+    res.render 'playsong', userkey: decodeURIComponent(decodeURIComponent(req.query.key))
+
+app.get '/stop', (req, res) ->
+    console.log(req.query.key)
+    if sockets[req.query.key]?
+        sockets[req.query.key].emit('stop')
+    else if sockets[decodeURIComponent(req.query.key)]?
+        sockets[decodeURIComponent(req.query.key)].emit('stop')
+    else
+        console.log("No matching socket found for " + req.query.key)
     res.render 'playsong'
 
 sockets = {}
+io.set('log level', 1)
 io.sockets.on 'connection', (socket) ->
     socket.on 'register', (data) ->
         console.log(decodeURIComponent(data.key))
@@ -154,12 +169,11 @@ MongoClient.connect 'mongodb://127.0.0.1:27017/abookofmusic', (err, db) ->
         song_coll = db.collection('songs')
 
 updateSongElem = (userkey, doc, elem, cb) ->
-    console.log(elem)
     song_coll.findOne title: elem.attribs.title.toString(), (err, result) ->
         if err?
             console.log(err)
         if result?
-            doc(elem).html('<a href="http://xhochy.com:5000/playsong?key=' + encodeURIComponent(userkey) + '&title=' + encodeURIComponent(result.real_title) + '&artist=' + encodeURIComponent(result.artist) + '">' +  doc(elem).text() + ' (&#9654;)</a>')
+            doc(elem).html('<a href="' + conf.playhost + 'playsong?key=' + encodeURIComponent(userkey) + '&title=' + encodeURIComponent(result.real_title) + '&artist=' + encodeURIComponent(result.artist) + '">' +  doc(elem).text() + ' (&#9654;)</a>')
         cb(null, doc)
 
 updateSongLinks = (output, userkey, cb) ->
@@ -172,6 +186,7 @@ updateSongLinks = (output, userkey, cb) ->
             elems.push(elem)
     iter = _.partial(updateSongElem, userkey)
     async.reduce elems, doc, iter, (err, doc) ->
+        console.log("book rendered")
         cb(doc.html())
 
 port = process.env.PORT || 5000
