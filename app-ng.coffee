@@ -129,6 +129,20 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                                     console.log(err)
                 ).on 'close', ->
                     console.log("closing..")
+## **socket.io**
+
+sockets = {}
+io.set('log level', 1)
+io.sockets.on 'connection', (socket) ->
+    socket.on 'register', (data) ->
+        sockets[decodeURIComponent(data.key)] = socket
+    socket.on 'disconnect', ->
+        toDelete = []
+        for k,v of sockets
+            if v == socket
+                toDelete.push(k)
+        toDelete.forEach (k) ->
+            delete sockets[k]
 
 getSocketForReq = (req) ->
     if sockets[req.query.key]?
@@ -150,14 +164,7 @@ app.get '/stop', (req, res) ->
         socket.emit('stop')
     res.render 'playsong'
 
-sockets = {}
-io.set('log level', 1)
-io.sockets.on 'connection', (socket) ->
-    socket.on 'register', (data) ->
-        console.log(decodeURIComponent(data.key))
-        sockets[decodeURIComponent(data.key)] = socket
-    socket.on 'disconnect', ->
-        # todo remove from sockest
+## **MongoDB**
 
 mongodb = {}
 song_coll = {}
