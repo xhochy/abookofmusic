@@ -14,7 +14,6 @@ cheerio = require('cheerio')
 fs = require('fs')
 archiver = require('archiver')
 TwitterStrategy = require('passport-twitter').Strategy
-StringReader = require './stringreader.js'
 passportSocketIo = require("passport.socketio")
 MongoClient = require('mongodb').MongoClient
 
