@@ -130,24 +130,24 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                 ).on 'close', ->
                     console.log("closing..")
 
-app.get '/playsong', (req, res) ->
-    console.log(req.query.key)
+getSocketForReq = (req) ->
     if sockets[req.query.key]?
-        sockets[req.query.key].emit('playsong', title: req.query.title, artist: req.query.artist)
+        return sockets[req.query.key]
     else if sockets[decodeURIComponent(req.query.key)]?
-        sockets[decodeURIComponent(req.query.key)].emit('playsong', title: req.query.title, artist: req.query.artist)
+        return sockets[decodeURIComponent(req.query.key)]
     else
-        console.log("No matching socket found for " + req.query.key)
+        return null
+
+app.get '/playsong', (req, res) ->
+    socket = getSocketForReq(req)
+    if socket?
+        socket.emit('playsong', title: req.query.title, artist: req.query.artist)
     res.render 'playsong', userkey: decodeURIComponent(decodeURIComponent(req.query.key))
 
 app.get '/stop', (req, res) ->
-    console.log(req.query.key)
-    if sockets[req.query.key]?
-        sockets[req.query.key].emit('stop')
-    else if sockets[decodeURIComponent(req.query.key)]?
-        sockets[decodeURIComponent(req.query.key)].emit('stop')
-    else
-        console.log("No matching socket found for " + req.query.key)
+    socket = getSocketForReq(req)
+    if socket?
+        socket.emit('stop')
     res.render 'playsong'
 
 sockets = {}
