@@ -1,0 +1,27 @@
+{
+  "name": "abookofmusic",
+  "version": "0.0.1",
+  "homepage": "https://github.com/xhochy/abookofmusic",
+  "authors": [
+    "Uwe L. Korn <uwelk@xhochy.com>"
+  ],
+  "description": "Generate eBooks that are able to play the music that is mentioned in their text on your computer while enjoying them on your favorite eBook-Reader.",
+  "main": "app-ng.js",
+  "keywords": [
+    "ebook",
+    "wikipedia",
+    "music"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "~3.0.3"
+  }
+}
