@@ -1,5 +1,4 @@
 _ = require 'underscore'
-async = require 'async'
 conf = require './conf'
 express = require 'express'
 glob = require 'glob'
@@ -10,12 +9,15 @@ temp = require 'temp'
 crypto = require 'crypto'
 PullStream = require('pullstream')
 unzip = require('unzip')
-cheerio = require('cheerio')
 fs = require('fs')
 archiver = require('archiver')
 TwitterStrategy = require('passport-twitter').Strategy
 passportSocketIo = require("passport.socketio")
 MongoClient = require('mongodb').MongoClient
+
+# Import internal functionality
+
+parsing = require('./lib/parsing')
 
 # Automatically track and cleanup files at exit
 temp.track()
@@ -117,7 +119,7 @@ app.post '/renderbook', ensureAuth, (req, res) ->
                         output = data
                         if entry.path.match(/\.xhtml/)
                             entry.autodrain()
-                            output = updateSongLinks output.toString(), userkey, (out) ->
+                            output = parsing.updateSongLinks output.toString(), userkey, (out) ->
                                 fs.writeFile path.join(dirpath, 'book', entry.path), out, (err) ->
                                     if err?
                                         console.log(err)
@@ -181,19 +183,6 @@ updateSongElem = (userkey, doc, elem, cb) ->
         if result?
             doc(elem).html('<a href="' + conf.playhost + 'playsong?key=' + encodeURIComponent(userkey) + '&title=' + encodeURIComponent(result.real_title) + '&artist=' + encodeURIComponent(result.artist) + '">' +  doc(elem).text() + ' (&#9654;)</a>')
         cb(null, doc)
-
-updateSongLinks = (output, userkey, cb) ->
-    # Parse data with cheerio
-    doc = cheerio.load(output)
-    elems = []
-    doc("span").each (i, elem) ->
-        if elem.attribs? && elem.attribs.title?
-            console.log(elem.attribs.title)
-            elems.push(elem)
-    iter = _.partial(updateSongElem, userkey)
-    async.reduce elems, doc, iter, (err, doc) ->
-        console.log("book rendered")
-        cb(doc.html())
 
 port = process.env.PORT || 5000
 server.listen port, ->
