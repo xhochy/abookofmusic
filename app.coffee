@@ -1,7 +1,6 @@
 _ = require 'underscore'
 conf = require './conf'
 express = require 'express'
-glob = require 'glob'
 path = require 'path'
 passport = require 'passport'
 spawn = require('child_process').spawn
