@@ -171,6 +171,7 @@ song_coll = {}
 MongoClient.connect 'mongodb://127.0.0.1:27017/abookofmusic', (err, db) ->
     if err?
         console.log(err)
+        process.exit(1)
     else
         mongodb = db
         song_coll = db.collection('songs')
