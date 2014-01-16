@@ -9,7 +9,7 @@
     "passport": "~0.1.x",
     "passport-twitter": "~1.x.x",
     "jade": "~0.x.x",
-    "underscore": "~1.4.x",
+    "underscore": "~1.x.x",
     "async": "~0.2.x",
     "unzip": "~0.1.x",
     "adm-zip": "~0.4.x",
